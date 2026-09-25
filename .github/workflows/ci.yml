@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # macos-latest is the ARM runner on purpose: Apple Silicon is what
+        # users have, and it is the platform whose libtesseract filename and
+        # Homebrew prefix differ from everything else.
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.os }}
+
+      # Tesseract is a runtime dependency loaded with dlopen, so the build does
+      # not need it — but the OCR tests skip themselves when it is absent, and a
+      # silently skipped test suite is not a test suite.
+      - name: Install Tesseract (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-hrv libtesseract5
+
+      - name: Install Tesseract (macOS)
+        if: runner.os == 'macOS'
+        run: brew install tesseract tesseract-lang
+
+      - name: Install Tesseract (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install tesseract --no-progress -y
+          "C:\Program Files\Tesseract-OCR" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        shell: pwsh
+
+      - name: Report what the tests will see
+        run: cargo run --quiet --bin lq -- doctor
+        continue-on-error: true
+
+      - name: Format
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test
+
+      - name: Release build
+        run: cargo build --release
+
+  msrv:
+    name: MSRV (1.88)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pinned to the `rust-version` in Cargo.toml. When a dependency bump
+      # raises the floor, this job is what tells you before a user does.
+      - uses: dtolnay/rust-toolchain@1.88.0
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: msrv
+
+      - name: Check
+        run: cargo check --all-targets --locked
+
+  offline:
+    name: No-network build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: offline
+
+      # The claim in the README is that `--no-default-features` leaves no
+      # network stack in the binary, not merely that nothing calls one. Reading
+      # the dependency graph is the only way to keep that claim honest.
+      - name: Prove the HTTP and TLS crates are absent
+        run: |
+          tree=$(cargo tree --no-default-features --edges normal --prefix none --locked)
+          if echo "$tree" | grep -Eq '^(ureq|rustls|native-tls|openssl|hyper|reqwest|sha2) '; then
+            echo "$tree" | grep -E '^(ureq|rustls|native-tls|openssl|hyper|reqwest|sha2) '
+            echo "::error::a network or crypto crate is still in the --no-default-features graph"
+            exit 1
+          fi
+
+      - name: Clippy
+        run: cargo clippy --no-default-features --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test --no-default-features
+
+      - name: Release build
+        run: cargo build --release --no-default-features
+
+  privacy:
+    name: Privacy scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan the tree for private or machine-specific content
+        run: bash scripts/check-privacy.sh

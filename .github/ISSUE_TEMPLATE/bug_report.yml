@@ -1,0 +1,78 @@
+name: Bug report
+description: Something does not work the way the docs say it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: run `lq doctor` and skim
+        [docs/troubleshooting.md](../blob/main/docs/troubleshooting.md).
+        Between them they answer most reports, and `doctor` output is the first
+        thing anyone will ask you for.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you expected, and what you got instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: The exact command
+      description: Copy the whole invocation, including flags. Redact paths if you need to.
+      render: console
+      placeholder: lq search "invoice total" --snippet
+    validations:
+      required: true
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `lq doctor`
+      description: >
+        The complete output, not an excerpt. It carries the resolved Tesseract
+        library and every path tried, the visible language packs, the database
+        path and schema version, and the active defaults.
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: LensQuery version
+      description: From `lq --version`, or the commit if you built from source.
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: OS and version
+      placeholder: Windows 11 24H2 / Ubuntu 24.04 / macOS 15.2 (Apple Silicon)
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: How to reproduce
+      description: >
+        Best case, a repro against the committed fixtures in `tests/fixtures/`.
+        If it needs a particular image, describe it — do not upload anything
+        private.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: The `lq doctor` output above is complete and unedited apart from redacted paths.
+          required: true
+        - label: I am not attaching anything I would mind being public.
+          required: true

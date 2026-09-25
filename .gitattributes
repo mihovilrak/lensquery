@@ -1,0 +1,5 @@
+# Normalize to LF in the repository. Developed on Windows, built on all three.
+* text=auto eol=lf
+
+# Fixtures are compared byte-for-byte by the OCR tests; never touch them.
+*.png binary

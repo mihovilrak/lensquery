@@ -1,0 +1,43 @@
+[workspace]
+members = ["cargo:."]
+
+# Config for 'dist' (cargo-dist). Regenerate CI after editing this file:
+#   dist init --yes   (or: dist generate)
+# The release workflow is checked in and must stay in sync — CI fails if it
+# drifts. See docs/packaging.md for the whole release procedure.
+[dist]
+# The preferred dist version to use in CI (Cargo.toml SemVer syntax)
+cargo-dist-version = "0.32.0"
+# CI backends to support
+ci = "github"
+# The installers to generate for each app.
+#
+# The Homebrew formula is generated as a release artifact only; it is not
+# pushed to the tap automatically, because `publish-jobs = ["homebrew"]`
+# fails the whole release if the tap repo or its token is missing. Flip it on
+# once the tap exists — docs/packaging.md has the two-line change.
+installers = ["shell", "powershell", "homebrew"]
+# Homebrew tap the formula names. The tap itself is created by hand, once.
+tap = "mihovilrak/homebrew-tap"
+formula = "lensquery"
+# Target platforms to build apps for (Rust target-triple syntax).
+#
+# No `x86_64-unknown-linux-musl`: a statically linked musl binary has a stub
+# `dlopen` that always fails, and every OCR call in this program goes through
+# `dlopen` (ADR 0005). A musl build would compile, ship, and then refuse to
+# find Tesseract on any machine. The glibc build covers the same users.
+targets = ["aarch64-apple-darwin", "aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+# Path that installers should place binaries in
+install-path = "CARGO_HOME"
+# Where to host releases
+hosting = "github"
+# Whether to install an updater program
+install-updater = false
+
+# Tesseract is a *runtime* dependency, never a build one: the library is opened
+# with `dlopen` at first use (ADR 0005), so nothing links against it and the
+# release builders need nothing installed. Declaring it here puts
+# `depends_on "tesseract"` in the generated formula, which makes Homebrew the
+# one channel where `install` leaves you with a working OCR setup.
+[dist.dependencies.homebrew]
+tesseract = { stage = ["run"] }

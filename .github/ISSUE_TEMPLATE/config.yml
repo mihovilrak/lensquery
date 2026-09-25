@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or idea
+    url: https://github.com/mihovilrak/lensquery/discussions
+    about: How something works, or a design conversation before code exists.
+  - name: Something is broken and you are not sure what
+    url: https://github.com/mihovilrak/lensquery/blob/main/docs/troubleshooting.md
+    about: Symptom-first troubleshooting. Start with `lq doctor`.
+  - name: Security vulnerability
+    url: https://github.com/mihovilrak/lensquery/security/advisories/new
+    about: Report privately. Do not open a public issue.

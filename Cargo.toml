@@ -1,0 +1,86 @@
+[package]
+name = "lensquery"
+version = "0.1.0"
+edition = "2021"
+# Derived, not guessed: the highest `rust-version` in the resolved dependency
+# graph (`image` 0.25.10 at 1.88), which is above our own floor (`db.rs` uses
+# `is_multiple_of`, stable since 1.87). Re-derive from `cargo metadata` when
+# bumping deps rather than editing this by hand.
+rust-version = "1.88"
+description = "Offline full-text search over the text inside your images. One binary, SQLite FTS5, no server."
+license = "MIT"
+repository = "https://github.com/mihovilrak/lensquery"
+homepage = "https://github.com/mihovilrak/lensquery"
+readme = "README.md"
+keywords = ["ocr", "search", "tesseract", "fts5", "cli"]
+categories = ["command-line-utilities", "text-processing", "multimedia::images"]
+exclude = ["/docs", "/scripts", "/.github", "/examples"]
+
+# Two names for one program. The crate is `lensquery` because `lq` was already
+# taken on crates.io; `lq` stays the primary binary because it is what the docs
+# and muscle memory use. The `lensquery` alias exists for anyone whose `$PATH`
+# already has a different `lq` on it. Both are shims over `lensquery::cli`.
+# See docs/decisions/0004-crate-name-lensquery.md.
+[[bin]]
+name = "lq"
+path = "src/main.rs"
+
+[[bin]]
+name = "lensquery"
+path = "src/bin/lensquery.rs"
+
+[lib]
+name = "lensquery"
+path = "src/lib.rs"
+
+[dependencies]
+rusqlite = { version = "0.40", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "1"
+dirs = "6"
+thiserror = "2"
+libloading = "0.8"
+image = "0.25"
+clap = { version = "4.6.3", features = ["derive"] }
+indicatif = "0.18.6"
+anyhow = "1"
+# Only reachable from `lq lang add`. See the `download` feature.
+ureq = { version = "3.4.0", optional = true, default-features = false, features = ["rustls"] }
+sha2 = { version = "0.11.0", optional = true }
+sys-locale = "0.3.2"
+# `lq watch` only. Default features off drops the optional `crossbeam-channel`
+# and `serde` integrations — we debounce over a plain `std::sync::mpsc` — while
+# `macos_fsevent` keeps the native macOS backend rather than the kqueue
+# fallback. Nothing here opens a socket, so it stays out of the `download`
+# feature.
+notify = { version = "8.2.0", default-features = false, features = ["macos_fsevent"] }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+# Unwinding, not aborting: the indexer catches a panic per image
+# (`indexer::ocr_one`) so one bad file out of tens of thousands costs that file
+# rather than a multi-hour run. `panic = "abort"` makes `catch_unwind` inert,
+# which is exactly the wrong trade at 20k images. Costs a little binary size.
+panic = "unwind"
+strip = true
+
+# The profile that 'dist' will build with. It inherits `release` untouched on
+# purpose: dist's own template downgrades to `lto = "thin"` for build time, but
+# then the binary we hand people would be a different build from the one
+# `cargo install lensquery` produces. Release tags are rare; the extra CI
+# minutes are cheaper than that divergence. `panic = "unwind"` is inherited and
+# must stay that way — see the note on [profile.release].
+[profile.dist]
+inherits = "release"
+
+# `download` is what pulls a TLS stack into the binary. It is on by default
+# because `lq lang add <code>` is the sane way to get a language pack, and off
+# is a real build for anyone who wants a binary that provably cannot open a
+# socket: `cargo install lensquery --no-default-features` still indexes,
+# searches and serves, and `lq lang add` tells you to drop the file in by hand.
+[features]
+default = ["download"]
+download = ["dep:ureq", "dep:sha2"]

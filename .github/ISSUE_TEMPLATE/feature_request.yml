@@ -1,0 +1,47 @@
+name: Feature request
+description: Suggest something LensQuery should do
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Worth knowing before you write: "one binary, no server, no daemon, no
+        network" is the point of the tool rather than an unfinished state, and
+        defaults here come from measurements recorded in
+        [docs/benchmarks.md](../blob/main/docs/benchmarks.md). Proposals that
+        change a default land much faster with a measurement attached.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do, and where does LensQuery get in the way?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you want it to do
+      description: If it is a new flag or command, write the invocation you would type.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried instead
+      description: Existing flags, other tools, a shell pipeline. Say why they fell short.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: willing
+    attributes:
+      label: Would you be up for implementing it?
+      options:
+        - Yes, with a pointer to where to start
+        - Maybe, depending on the size
+        - No, just proposing
+    validations:
+      required: false

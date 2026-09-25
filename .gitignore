@@ -1,0 +1,18 @@
+# Rust build output
+/target
+
+# Indexes produced by running the tool
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Tesseract language models — downloaded by `lq lang add`, never committed
+tessdata/
+*.traineddata
+
+# Local agent/editor state
+.claude/
+.vscode/
+.idea/
+*.swp
